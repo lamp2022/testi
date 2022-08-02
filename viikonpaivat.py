@@ -7,3 +7,6 @@ what_length = int(what_length_str)
 
 paluu = (when_leave + what_length) % 7
 print(paluu)
+
+######
+#####
