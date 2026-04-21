@@ -164,9 +164,19 @@ async def scrape(check_type: str = "hourly", debug: bool = False) -> list[dict]:
     ts = now.isoformat(timespec="seconds")
     print(f"[{now.strftime('%Y-%m-%d %H:%M')}] Scraping ({check_type}) …")
 
+    # Find installed Chromium — Playwright version pinning sometimes mismatches
+    _chromium_candidates = [
+        "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
+        "/opt/pw-browsers/chromium-1208/chrome-linux/chrome",
+    ]
+    _exe = next((c for c in _chromium_candidates if Path(c).exists()), None)
+
     results = []
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        launch_kwargs: dict = {"headless": True}
+        if _exe:
+            launch_kwargs["executable_path"] = _exe
+        browser = await p.chromium.launch(**launch_kwargs)
         context = await browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -176,6 +186,7 @@ async def scrape(check_type: str = "hourly", debug: bool = False) -> list[dict]:
             locale="en-US",
             timezone_id="Europe/Berlin",
             viewport={"width": 1280, "height": 900},
+            ignore_https_errors=True,
         )
         page = await context.new_page()
 
