@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tilitoimistojärjestelmä — Architecture &amp; Design Plan</title>
+<style>
+  :root {
+    --blue:   #1a56db;
+    --dark:   #111827;
+    --mid:    #374151;
+    --light:  #6b7280;
+    --bg:     #f9fafb;
+    --border: #e5e7eb;
+    --accent: #eff6ff;
+    --red:    #dc2626;
+    --amber:  #d97706;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--dark);
+    background: var(--bg);
+    padding: 0;
+  }
+  .cover {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1a56db 60%, #2563eb 100%);
+    color: white;
+    padding: 72px 64px 56px;
+    page-break-after: always;
+  }
+  .cover .label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 20px;
+  }
+  .cover h1 {
+    font-size: 38px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+  }
+  .cover .subtitle {
+    font-size: 17px;
+    opacity: 0.8;
+    margin-bottom: 40px;
+  }
+  .cover .meta {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+  }
+  .cover .meta-item { font-size: 13px; opacity: 0.85; }
+  .cover .meta-item strong { display: block; font-size: 15px; opacity: 1; margin-bottom: 2px; }
+  .toc {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px 40px;
+    margin: 40px 64px;
+    page-break-after: always;
+  }
+  .toc h2 { font-size: 18px; margin-bottom: 20px; color: var(--blue); }
+  .toc ul { list-style: none; }
+  .toc li { padding: 4px 0; border-bottom: 1px dotted var(--border); }
+  .toc li:last-child { border-bottom: none; }
+  .toc a { color: var(--mid); text-decoration: none; font-size: 14px; }
+  .toc a:hover { color: var(--blue); }
+  .content {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 64px 80px;
+  }
+  h1 { font-size: 30px; font-weight: 800; color: var(--dark); margin: 48px 0 16px; padding-bottom: 10px; border-bottom: 2px solid var(--blue); }
+  h2 { font-size: 22px; font-weight: 700; color: var(--blue); margin: 40px 0 14px; }
+  h3 { font-size: 17px; font-weight: 700; color: var(--dark); margin: 28px 0 10px; }
+  h4 { font-size: 15px; font-weight: 700; color: var(--mid); margin: 20px 0 8px; }
+  p { margin-bottom: 14px; color: var(--mid); }
+  ul, ol { padding-left: 22px; margin-bottom: 14px; color: var(--mid); }
+  li { margin-bottom: 4px; }
+  strong { color: var(--dark); font-weight: 600; }
+  em { color: var(--light); }
+  a { color: var(--blue); }
+  code {
+    font-family: "SF Mono", "Fira Code", Consolas, monospace;
+    font-size: 13px;
+    background: #f3f4f6;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: #1f2937;
+  }
+  pre {
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 20px 0;
+  }
+  pre code {
+    background: none;
+    border: none;
+    color: #e2e8f0;
+    font-size: 13px;
+    padding: 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13.5px;
+  }
+  thead { background: var(--blue); color: white; }
+  th { padding: 10px 14px; text-align: left; font-weight: 600; }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--mid); }
+  tr:nth-child(even) td { background: var(--accent); }
+  tr:hover td { background: #dbeafe; }
+  blockquote {
+    border-left: 4px solid var(--blue);
+    background: var(--accent);
+    padding: 12px 20px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  @media print {
+    body { background: white; }
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    pre { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    h2 { page-break-after: avoid; }
+    table { page-break-inside: avoid; }
+    pre { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="label">Architecture &amp; Design Document</div>
+  <h1>Tilitoimisto&shy;järjestelmä</h1>
+  <div class="subtitle">Finnish SaaS Accounting Office System — Full System Design</div>
+  <div class="meta">
+    <div class="meta-item"><strong>Version</strong>1.0 — Initial Design</div>
+    <div class="meta-item"><strong>Date</strong>May 2026</div>
+    <div class="meta-item"><strong>Deployment</strong>SaaS Multi-tenant</div>
+    <div class="meta-item"><strong>Methodology</strong>Test-Driven Development</div>
+    <div class="meta-item"><strong>Codebase Est.</strong>~211,000 LOC</div>
+    <div class="meta-item"><strong>Timeline</strong>18–24 months</div>
+  </div>
+</div>
+
+<div class="content">
+<h1 id="tilitoimistojarjestelma-architecture-design-plan">Tilitoimistojärjestelmä — Architecture &amp; Design Plan</h1>
+<h2 id="context">Context</h2>
+<p>Building a SaaS-based Finnish accounting office system from scratch (greenfield repo). The platform serves accounting firms (tilitoimistot) as primary tenants — each firm subscribes and manages their own client companies (asiakkaat) as isolated sub-tenants. Accountants work on web; customers get a lightweight mobile+web portal. Must comply fully with Finnish accounting law, tax authority integrations, and GDPR.</p>
+<p><strong>User answers:</strong>
+- Deployment: SaaS (multiple tilitoimistot, platform-as-a-service)
+- Payroll: In-house Finnish engine (not 3rd party)
+- Backend stack: Architecture-driven recommendation (see below)
+- Mobile scope: Customer portal only (scan receipts, approve invoices, view reports)
+- Development approach: <strong>Test-driven development (TDD)</strong></p>
+<hr />
+<h2 id="tenancy-model">Tenancy Model</h2>
+<pre><code>Platform (SaaS operator)
+└── Tilitoimisto / Tenant  [1..N]
+    └── Asiakas / Sub-tenant  [1..M per tilitoimisto]
+</code></pre>
+<p><strong>Isolation:</strong> PostgreSQL Row Level Security (RLS) on every table.
+- <code>tenant_id</code> + <code>asiakas_id</code> columns everywhere
+- RLS policies: platform_admin sees all; tilitoimisto users see their asiakkaat; asiakas users see only their own data
+- RLS must be tested with a dedicated security test suite before any production deployment</p>
+<hr />
+<h2 id="technology-stack">Technology Stack</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Justification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backend API</td>
+<td>Python 3.12 + FastAPI</td>
+<td>Decimal precision for finance, strong typing (Pydantic), async I/O, best OCR/ML ecosystem</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL 16 + RLS</td>
+<td>ACID, RLS for tenant isolation, JSONB for document metadata, pg_cron for scheduled jobs</td>
+</tr>
+<tr>
+<td>Task queue</td>
+<td>Celery + Redis</td>
+<td>Async OCR, OmaVero submissions, bank sync, tulorekisteri</td>
+</tr>
+<tr>
+<td>Web frontend</td>
+<td>React 18 + TypeScript + Vite</td>
+<td>Large ecosystem, shared component library between tilitoimisto and asiakas apps</td>
+</tr>
+<tr>
+<td>Mobile</td>
+<td>React Native + Expo</td>
+<td>Customer portal only; camera, offline queue, push notifications</td>
+</tr>
+<tr>
+<td>Object storage</td>
+<td>S3-compatible (MinIO local, AWS S3 prod)</td>
+<td>Tenant-scoped keys, immutable archive policy</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>Keycloak (self-hosted)</td>
+<td>OIDC/OAuth2, MFA, Suomi.fi tunnistus integration</td>
+</tr>
+<tr>
+<td>Infra</td>
+<td>Kubernetes + Helm + Terraform</td>
+<td>Multi-tenant scale, isolated namespaces per environment</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>GitHub Actions</td>
+<td>Test gates before every merge</td>
+</tr>
+<tr>
+<td>Monitoring</td>
+<td>Prometheus + Grafana + Sentry</td>
+<td>Financial system uptime and error tracking</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="codebase-size-estimate-tdd-ratio">Codebase Size Estimate (TDD ratio)</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Production LOC</th>
+<th>Test LOC</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backend (Python)</td>
+<td>~60,000</td>
+<td>~55,000</td>
+<td>~115,000</td>
+</tr>
+<tr>
+<td>Web frontend (TS/React)</td>
+<td>~40,000</td>
+<td>~25,000</td>
+<td>~65,000</td>
+</tr>
+<tr>
+<td>Mobile (React Native)</td>
+<td>~12,000</td>
+<td>~8,000</td>
+<td>~20,000</td>
+</tr>
+<tr>
+<td>Infra / config / SQL</td>
+<td>~8,000</td>
+<td>~3,000</td>
+<td>~11,000</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>~120,000</strong></td>
+<td><strong>~91,000</strong></td>
+<td><strong>~211,000</strong></td>
+</tr>
+</tbody>
+</table>
+<p>TDD raises test LOC to ~75% of production code. Financial calculation modules (payroll, ALV) aim for near 100% coverage. This is a medium-large enterprise codebase — comparable to ~2-3 years of focused development by a 4-6 person team.</p>
+<hr />
+<h2 id="tdd-strategy">TDD Strategy</h2>
+<p>TDD is the right approach here because:
+- Payroll deduction errors = legal and financial liability
+- ALV rate errors = OmaVero penalties
+- Double-entry imbalance = corrupted books
+- Tenant isolation bugs = catastrophic data leak</p>
+<p><strong>Testing layers:</strong></p>
+<pre><code>Unit tests          — pure financial calculations (payroll, ALV, double-entry balance)
+Integration tests   — API endpoints, DB queries, RLS enforcement
+Contract tests      — OmaVero API, Tulorekisteri API, Finvoice XML schema
+E2E tests           — full user flows (tilitoimisto onboards asiakas, posts tosite, submits ALV)
+Security tests      — dedicated RLS penetration suite (cross-tenant access attempts)
+</code></pre>
+<p><strong>TDD rules for this project:</strong>
+- All financial calculation functions: write test with known Finnish tax scenario BEFORE implementation
+- ALV rates and payroll rates live in test fixtures, not hardcoded — tests break if rates not updated
+- Every OmaVero/Tulorekisteri integration has a mock + a contract test against sandbox API
+- RLS tests: automated suite attempts cross-tenant data access after every migration</p>
+<hr />
+<h2 id="core-data-model">Core Data Model</h2>
+<h3 id="tenancy-tables">Tenancy tables</h3>
+<pre><code class="language-sql">organizations          -- tilitoimistot (tenants)
+  id, name, y_tunnus, subscription_plan, created_at
+
+org_users              -- tilitoimisto staff
+  id, org_id, user_id, role
+
+customers              -- asiakkaat (sub-tenants)
+  id, org_id, name, y_tunnus, tilikausi_alkaa, tilikausi_loppuu, alv_jakso
+
+customer_users         -- asiakas portal users
+  id, customer_id, user_id, role
+</code></pre>
+<h3 id="kirjanpito-core">Kirjanpito core</h3>
+<pre><code class="language-sql">tilikartat             -- chart of accounts per asiakas
+tilit                  -- accounts: numero, nimi, tyyppi, alv_koodi
+tilikaudet             -- fiscal years: alkaa, loppuu, tila (avoin/suljettu/lukittu)
+tositteet              -- vouchers: tyyppi, pvm, numero (auto), tila
+viennit                -- journal lines: tili_id, debet, kredit, alv_%  (debet=kredit enforced at DB)
+</code></pre>
+<h3 id="reskontra">Reskontra</h3>
+<pre><code class="language-sql">myyntilaskut           -- AR invoices + Finvoice metadata
+ostolaskut             -- AP invoices + approval state machine
+suoritukset            -- payments matched to invoices
+tilitapahtumat         -- bank statement lines (from CAMT.053/MT940)
+</code></pre>
+<h3 id="palkanlaskenta">Palkanlaskenta</h3>
+<pre><code class="language-sql">tyontekijat            -- employees: henkilotunnus (encrypted), ennakonpidatys%, tyel_numero
+palkkakaudet           -- pay periods
+palkat                 -- calculated pay: brutto, ennakonpidatys, tyel, sairausvakuutus, netto
+palkka_verokortti      -- withholding tax card per employee per year
+tulorekisteri_log      -- submission log + API responses
+alv_vuosikorot         -- ALV rate table by year (NOT hardcoded)
+palkkavakuutusmaksut   -- insurance rate table by year (NOT hardcoded)
+</code></pre>
+<h3 id="alv-authorities">ALV &amp; Authorities</h3>
+<pre><code class="language-sql">alv_kaudet             -- VAT periods per asiakas
+alv_laskelmat          -- VAT calculation lines by code
+omavero_lahetykset     -- OmaVero submission log
+</code></pre>
+<h3 id="archive-compliance">Archive &amp; Compliance</h3>
+<pre><code class="language-sql">asiakirjat             -- immutable document registry: s3_key, sha256, retention_until
+audit_log              -- append-only: user, action, before/after JSON, timestamp, ip
+</code></pre>
+<hr />
+<h2 id="module-breakdown">Module Breakdown</h2>
+<h3 id="module-1-auth-iam">Module 1 — Auth &amp; IAM</h3>
+<p><strong>Roles:</strong> platform_admin, tilitoimisto_admin, kirjanpitaja, asiakas_admin, asiakas_user, tilintarkastaja
+- JWT + refresh tokens via Keycloak
+- RBAC enforced at API gateway + service level
+- MFA mandatory for all accountant roles
+- Suomi.fi tunnistus (Phase 2 option)
+- All auth events written to audit_log</p>
+<h3 id="module-2-kirjanpito-bookkeeping-core">Module 2 — Kirjanpito (Bookkeeping Core)</h3>
+<ul>
+<li>Tilikartta from KILA standard template (customizable)</li>
+<li>Tilikausi state machine: avoin → suljettu → lukittu</li>
+<li>Double-entry enforced: <code>sum(debet) = sum(kredit)</code> per tosite (DB constraint)</li>
+<li>Tosite auto-numbering per kausi (YYYY + sequential)</li>
+<li>Period locking: no backdated posts to locked kausi</li>
+<li>Finnish ALV codes (1-99 series) on viennit</li>
+</ul>
+<h3 id="module-3-myyntireskontra-ar">Module 3 — Myyntireskontra (AR)</h3>
+<ul>
+<li>Myyntilasku with line items and ALV breakdown</li>
+<li>Finnish viitenumero generation (mod 97)</li>
+<li>Finvoice 3.0 XML + PEPPOL BIS 3.0 generation</li>
+<li>Auto-match incoming payments by viitenumero</li>
+<li>Asiakasrekisteri with YTJ lookup by Y-tunnus</li>
+</ul>
+<h3 id="module-4-ostoreskontra-ap">Module 4 — Ostoreskontra (AP)</h3>
+<ul>
+<li>Receive e-invoices via Finvoice operator (Maventa/Apix broker)</li>
+<li>OCR parse paper invoices (Tesseract)</li>
+<li>Approval state machine: <code>saapunut → odottaa_hyvaksyntaa → hyvaksytty → maksettu → kirjattu</code></li>
+<li>SEPA PAIN.001 payment file generation</li>
+<li>Auto-post to kirjanpito after approval</li>
+</ul>
+<h3 id="module-5-alv">Module 5 — ALV</h3>
+<ul>
+<li>Rate table in DB per year (Sept 2024: standard changed 24% → 25.5%)</li>
+<li>Finnish ALV codes: 0%, 10%, 14%, 25.5% (standard), EU reverse charge, OSS</li>
+<li>Period calculator (kuukausittain / neljännesvuosittain based on liikevaihto)</li>
+<li>OmaVero API push with certificate-based OAuth2</li>
+<li>Correction submissions for late/amended periods</li>
+</ul>
+<h3 id="module-6-palkanlaskenta-highest-complexity">Module 6 — Palkanlaskenta (HIGHEST COMPLEXITY)</h3>
+<p>Finnish deductions (2024, all stored in rate tables):
+- Ennakonpidätys — from individual verokortti (fetched from OmaVero or entered manually)
+- TyEL työntekijä — 7.15% (&lt;53yo), 8.65% (53-62yo)
+- Sairausvakuutusmaksu — 1.16% (employee)
+- Työttömyysvakuutusmaksu — 0.79% (employee)
+- Employer: TyEL, sairausvakuutus, tapaturma, ryhmähenkivakuutus</p>
+<p>Process flow:
+1. Define palkkauskausi → enter työtunnit/kuukausipalkat
+2. Auto-calculate all deductions from rate tables
+3. Generate palkkalaskelma PDF
+4. Auto-post palkkakirjanpito viennit
+5. Submit to Tulorekisteri API (within 5 days of payment day)
+6. Generate TyEL ilmoitus to pension company
+7. SEPA PAIN.001 for salary disbursement</p>
+<p><strong>Rate tables are DB records, not code constants — annual update is an admin workflow.</strong></p>
+<h3 id="module-7-tilinpaatos-year-end-closing">Module 7 — Tilinpäätös (Year-End Closing)</h3>
+<ul>
+<li>Guided checklist workflow with blocking steps</li>
+<li>Tuloslaskelma: kululajipohjainen (default) + toimintokohtainen</li>
+<li>Tase: Finnish standard format</li>
+<li>Liitetiedot templates: mikroyritys / pk-yritys / suuri yritys</li>
+<li>XBRL/iXBRL export (mandatory for large companies from 2024)</li>
+<li>Auto-closing entries (depreciation, accruals)</li>
+<li>Tilikausi locked after tilinpäätös approval — irreversible</li>
+</ul>
+<h3 id="module-8-viranomaisintegraatiot">Module 8 — Viranomaisintegraatiot</h3>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Protocol</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OmaVero</td>
+<td>REST + OAuth2 + org cert</td>
+<td>ALV, ennakkovero, yhteisöilmoitus</td>
+</tr>
+<tr>
+<td>Tulorekisteri</td>
+<td>REST + cert</td>
+<td>Real-time palkka ilmoitukset</td>
+</tr>
+<tr>
+<td>YTJ</td>
+<td>REST</td>
+<td>Y-tunnus lookup, company data</td>
+</tr>
+<tr>
+<td>Finvoice/PEPPOL</td>
+<td>SFTP/AS4 via operator</td>
+<td>E-invoice send/receive</td>
+</tr>
+</tbody>
+</table>
+<p>All external API calls: retry logic, timeout, circuit breaker, full response logging to <code>omavero_lahetykset</code>/<code>tulorekisteri_log</code>.</p>
+<h3 id="module-9-pankkiintegraatiot">Module 9 — Pankkiintegraatiot</h3>
+<ul>
+<li><strong>Inbound:</strong> CAMT.053 XML + MT940 import → tilitapahtumat table</li>
+<li><strong>Auto-reconciliation:</strong> match by viitenumero, then by amount+date+toimittaja</li>
+<li><strong>Outbound:</strong> SEPA PAIN.001 generated from approved ostolaskut + palkat</li>
+<li>Supported banks: Nordea, OP, Danske, Handelsbanken, S-Pankki (all use CAMT.053 now)</li>
+</ul>
+<h3 id="module-10-asiakasportaali">Module 10 — Asiakasportaali</h3>
+<p><strong>Web + Mobile (React Native/Expo):</strong>
+- Dashboard: velat, saatavat, ALV-status, next deadline
+- Receipt upload: drag-drop (web) / camera scan (mobile)
+- Invoice approval queue with comment field
+- Report viewer: P&amp;L, tase, ALV summary (read-only)
+- Threaded messaging per document with kirjanpitäjä
+- Offline receipt queue on mobile (sync on reconnect)
+- Push notifications (Firebase): "Lasku X odottaa hyväksyntääsi"</p>
+<h3 id="module-11-tilitoimiston-master-view">Module 11 — Tilitoimiston Master View</h3>
+<ul>
+<li>All clients dashboard with RAG status (red/amber/green)</li>
+<li>Deadline tracker: ALV, palkat, tilinpäätös — all clients unified calendar</li>
+<li>Missing receipts count per asiakas</li>
+<li>Kirjanpitäjä workload assignment and view</li>
+<li>Alert engine: "3 clients have ALV due in 5 days"</li>
+</ul>
+<h3 id="module-12-raportointi-arkisto">Module 12 — Raportointi &amp; Arkisto</h3>
+<ul>
+<li>Standard reports: tuloslaskelma, tase, pääkirja, päiväkirja, ALV-erittely, reskontra, palkkayhteenveto</li>
+<li>Export: PDF (WeasyPrint), Excel (openpyxl), CSV</li>
+<li>10-year immutable archive (S3 object lock, WORM policy)</li>
+<li>SHA256 hash stored per document at upload — integrity verifiable</li>
+<li>GDPR: henkilötunnus encrypted at rest with customer-specific key; right-to-erasure handled by key deletion</li>
+</ul>
+<h3 id="module-13-ocr-auto-posting">Module 13 — OCR &amp; Auto-posting</h3>
+<ul>
+<li>Pipeline: upload → S3 → Celery worker → Tesseract OCR → extract (toimittaja, pvm, summa, ALV, viite)</li>
+<li>ML tili suggestion: trained on asiakas's own posting history</li>
+<li>Kirjanpitäjä reviews suggestion, accepts or corrects</li>
+<li>Active learning: corrections fed back to model</li>
+</ul>
+<h3 id="module-14-notification-deadline-engine">Module 14 — Notification &amp; Deadline Engine</h3>
+<ul>
+<li>pg_cron + Celery beat for scheduled checks</li>
+<li>Deadlines tracked: ALV (12th of following month), Tulorekisteri (5 days post-payment), Tilinpäätös (4 months post-tilikausi)</li>
+<li>Channels: email (SendGrid), push (Firebase), in-app</li>
+</ul>
+<hr />
+<h2 id="api-design">API Design</h2>
+<ul>
+<li>REST (not GraphQL) — financial resources have clear semantics</li>
+<li>OpenAPI 3.1 spec — contract-first, generate clients</li>
+<li>Versioned: <code>/api/v1/...</code></li>
+<li>JWT bearer tokens with <code>tenant_id</code>, <code>asiakas_id</code>, <code>role</code> claims</li>
+<li>Separate API contexts: <code>/tilitoimisto/...</code> (accountant) vs <code>/portal/...</code> (customer)</li>
+</ul>
+<hr />
+<h2 id="phased-build-roadmap">Phased Build Roadmap</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Duration</th>
+<th>Deliverables</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — Foundation</td>
+<td>3-4 mo</td>
+<td>Infra, auth/IAM, tilikartta, kirjanpito core, tilikausi, audit log</td>
+</tr>
+<tr>
+<td>2 — Reskontra</td>
+<td>2-3 mo</td>
+<td>AR, AP, approval workflow, bank import, reconciliation, PAIN.001</td>
+</tr>
+<tr>
+<td>3 — ALV &amp; Authorities</td>
+<td>2 mo</td>
+<td>ALV engine, OmaVero API, YTJ, Finvoice operator</td>
+</tr>
+<tr>
+<td>4 — Payroll</td>
+<td>3-4 mo</td>
+<td>Full palkanlaskenta, Tulorekisteri API, TyEL, palkkakirjanpito</td>
+</tr>
+<tr>
+<td>5 — Year-End</td>
+<td>2 mo</td>
+<td>Tilinpäätös workflow, XBRL, statutory reports, PDF/Excel</td>
+</tr>
+<tr>
+<td>6 — Portal &amp; Mobile</td>
+<td>2-3 mo</td>
+<td>Asiakasportaali web, React Native app, OCR pipeline, master dashboard</td>
+</tr>
+<tr>
+<td>7 — Intelligence</td>
+<td>ongoing</td>
+<td>ML auto-posting, advanced analytics, Suomi.fi tunnistus</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Phases 1-3 = usable product. Full system ~18-24 months.</strong></p>
+<hr />
+<h2 id="key-design-decisions-must-resolve-before-coding">Key Design Decisions (must resolve before coding)</h2>
+<ol>
+<li><strong>Finvoice operator:</strong> Use Maventa or Apix as broker — do not implement operator directly</li>
+<li><strong>OmaVero cert:</strong> Software cert per tenant stored in secrets manager (HSM for production)</li>
+<li><strong>ALV + payroll rates:</strong> Never hardcoded — DB rate tables with annual admin update workflow. Tests will fail if rates are stale.</li>
+<li><strong>Tilikausi lock:</strong> Enforced at DB level (trigger), not just application layer</li>
+<li><strong>Henkilötunnus:</strong> Encrypted at rest, never in logs, access restricted to payroll module only</li>
+<li><strong>Mobile:</strong> Customer portal only — kirjanpitäjät on web exclusively</li>
+<li><strong>Tilikartta:</strong> KILA standard as seed template, customer can extend account numbering but cannot break standard group ranges</li>
+</ol>
+<hr />
+<h2 id="complexity-risk-assessment">Complexity &amp; Risk Assessment</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Complexity</th>
+<th>Risk</th>
+<th>Key Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth &amp; RLS</td>
+<td>Medium</td>
+<td><strong>Critical</strong></td>
+<td>Dedicated security test suite; pentest before launch</td>
+</tr>
+<tr>
+<td>Kirjanpito core</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>DB constraint for double-entry; TDD on all posting logic</td>
+</tr>
+<tr>
+<td>Myyntireskontra</td>
+<td>Medium</td>
+<td>Low</td>
+<td>Standard; Finvoice schema has XSD validation</td>
+</tr>
+<tr>
+<td>Ostoreskontra</td>
+<td>Medium</td>
+<td>Low</td>
+<td>Approval state machine tested exhaustively</td>
+</tr>
+<tr>
+<td>ALV engine</td>
+<td>High</td>
+<td><strong>High</strong></td>
+<td>TDD with known Verohallinto scenarios; rate table tests</td>
+</tr>
+<tr>
+<td>Palkanlaskenta</td>
+<td><strong>Very High</strong></td>
+<td><strong>High</strong></td>
+<td>TDD first; dedicated team; rate tables tested annually</td>
+</tr>
+<tr>
+<td>Tulorekisteri</td>
+<td>High</td>
+<td>High</td>
+<td>Real-time mandate; test against sandbox API; retry + idempotency</td>
+</tr>
+<tr>
+<td>OmaVero integration</td>
+<td>High</td>
+<td>High</td>
+<td>Certificate management; sandbox testing; response logging</td>
+</tr>
+<tr>
+<td>Bank integrations</td>
+<td>High</td>
+<td>Medium</td>
+<td>Format coverage tests with real bank sample files</td>
+</tr>
+<tr>
+<td>Tilinpäätös / XBRL</td>
+<td>High</td>
+<td>Medium</td>
+<td>XBRL taxonomy well-documented; validate against Eurofiling</td>
+</tr>
+<tr>
+<td>OCR / ML</td>
+<td>High</td>
+<td>Low</td>
+<td>ML accuracy improves over time; human review always available</td>
+</tr>
+<tr>
+<td>Multi-tenancy RLS</td>
+<td>High</td>
+<td><strong>Critical</strong></td>
+<td>Automated cross-tenant penetration tests on every migration</td>
+</tr>
+<tr>
+<td>GDPR vs retention</td>
+<td>Medium</td>
+<td>High</td>
+<td>Legal review needed — right-to-erasure vs. 10-year accounting law conflict</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="verification-plan">Verification Plan</h2>
+<ul>
+<li><strong>Unit:</strong> All financial functions (ALV calc, payroll deductions, double-entry balance) — pytest with parameterized Finnish tax scenarios from Verohallinto published examples</li>
+<li><strong>Integration:</strong> API endpoint tests (httpx + pytest) with real PostgreSQL including RLS</li>
+<li><strong>Contract:</strong> OmaVero sandbox API + Tulorekisteri test environment — validate XML schemas</li>
+<li><strong>Security:</strong> Automated suite: login as asiakas_user of Tenant A, attempt to read Tenant B data — must return 403/empty at every endpoint</li>
+<li><strong>E2E:</strong> Playwright (web) + Detox (mobile) — core flows: onboard asiakas, post tosite, submit ALV ilmoitus, run payroll, view tilinpäätös</li>
+<li><strong>Compliance:</strong> Annual review against Kirjanpitolaki updates and Verohallinto guideline changes</li>
+</ul>
+<hr />
+<h2 id="public-api-integration-reference">Public API Integration Reference</h2>
+<p>All APIs verified against current public documentation. Sandbox environments confirmed available for all critical integrations.</p>
+<hr />
+<h3 id="1-verohallinto-vero-api">1. Verohallinto / Vero API</h3>
+<p><strong>Purpose:</strong> ALV ilmoitus, ennakkovero, verokortti fetch, ennakonpidätys rates</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td>mTLS client certificate (PKCS#12) + <code>vero-softwarekey</code> header (software-specific key)</td>
+</tr>
+<tr>
+<td>Base URL</td>
+<td><code>api-developer.vero.fi</code> (sandbox), production URL via vero.fi registration</td>
+</tr>
+<tr>
+<td>Format</td>
+<td>JSON (primary), XML for some interfaces</td>
+</tr>
+<tr>
+<td>Encoding</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>Sandbox hours</td>
+<td>08:00–16:00 weekdays only (maintenance outside hours)</td>
+</tr>
+<tr>
+<td>Cost</td>
+<td>Free</td>
+</tr>
+<tr>
+<td>SDK</td>
+<td>None official — direct REST calls; contact <code>ohjelmistotalot@vero.fi</code> for dev support</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key operations:</strong>
+- <code>POST</code> ALV-ilmoitus (VAT return submission)
+- <code>GET</code> verokortti (employee withholding tax card) — fetched per henkilötunnus
+- <code>POST</code> ennakkovero payments
+- <code>GET</code> ennakonpidätystiedot (withholding tax info for employer)
+- <code>POST</code> yhteisöilmoitus (annual corporate tax return)</p>
+<p><strong>Implementation notes:</strong>
+- One certificate per tilitoimisto tenant (stored in secrets manager)
+- Certificate issued by Verohallinto after registration — ~2-4 week lead time
+- All requests logged to <code>omavero_lahetykset</code> with full response body
+- Circuit breaker: if sandbox is outside 08:00–16:00, mock responses in tests</p>
+<hr />
+<h3 id="2-tulorekisteri-incomes-register-api">2. Tulorekisteri (Incomes Register) API</h3>
+<p><strong>Purpose:</strong> Real-time palkka ilmoitukset (mandatory within 5 days of payment)</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td>X.509 certificate-based (separate certs for: earnings submission, benefits submission, data retrieval)</td>
+</tr>
+<tr>
+<td>Submission methods</td>
+<td>Real-time web service (per-report), Deferred web service (batch), SFTP</td>
+</tr>
+<tr>
+<td>Format</td>
+<td><strong>XML only</strong> — no BOM character allowed, UTF-8</td>
+</tr>
+<tr>
+<td>Sandbox</td>
+<td>Stakeholder testing environment available</td>
+</tr>
+<tr>
+<td>SDK</td>
+<td>None official — direct calls; major payroll software (Palkkaus.fi) as reference</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key operations:</strong>
+- Submit palkka ilmoitus (wage report) per employee per payment
+- Submit corrections to previous reports
+- Cancel submitted reports
+- Retrieve submitted data (data distribution interface)</p>
+<p><strong>Implementation notes:</strong>
+- 3 separate certificates: earnings, benefits, retrieval — all must be provisioned at onboarding
+- Idempotency critical: duplicate submissions must be detected and rejected
+- 5-day deadline is calendar days from payment date — deadline engine must track
+- Test against stakeholder environment before any production payroll run
+- XML schema validation must happen client-side before submission</p>
+<hr />
+<h3 id="3-ytj-prh-open-data-api">3. YTJ / PRH Open Data API</h3>
+<p><strong>Purpose:</strong> Company lookup by Y-tunnus, auto-populate asiakas details, validate business existence</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td><strong>None required</strong> — fully public API</td>
+</tr>
+<tr>
+<td>Base URL</td>
+<td><code>https://avoindata.prh.fi/opendata-ytj-api/v3</code></td>
+</tr>
+<tr>
+<td>Spec</td>
+<td>OpenAPI 3.0.1</td>
+</tr>
+<tr>
+<td>Format</td>
+<td>JSON</td>
+</tr>
+<tr>
+<td>Rate limit</td>
+<td>300 requests/minute (shared across all users)</td>
+</tr>
+<tr>
+<td>Sandbox</td>
+<td>No separate sandbox — test directly against live API (data is public register)</td>
+</tr>
+<tr>
+<td>Community SDKs</td>
+<td><code>jannewaren/ytj_client</code> (Python), <code>nikked/Avoindata.fi-Python-Tools</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key operations:</strong>
+- <code>GET /companies/{businessId}</code> — fetch by Y-tunnus
+- <code>GET /companies?name=...</code> — search by name
+- Daily bulk JSON export available for local caching</p>
+<p><strong>Implementation notes:</strong>
+- Cache Y-tunnus lookups locally (data updates daily, no need to hit API per request)
+- Does NOT include sole proprietorships (toiminimet) — manual entry fallback needed
+- No email/phone numbers — only register data
+- Use for KYC: validate that asiakas y_tunnus is a real active business</p>
+<hr />
+<h3 id="4-finvoice-30-format-specification">4. Finvoice 3.0 (Format Specification)</h3>
+<p><strong>Purpose:</strong> Finnish national e-invoicing XML format — mandatory for bank network; standard for B2B</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Type</td>
+<td>XML format specification (not an API — delivered via operators)</td>
+</tr>
+<tr>
+<td>Maintained by</td>
+<td>Finance Finland (Finanssiala ry)</td>
+</tr>
+<tr>
+<td>Schema</td>
+<td>XSD + Schematron validation rules — publicly downloadable</td>
+</tr>
+<tr>
+<td>Encoding</td>
+<td>UTF-8 or ISO 8859-15</td>
+</tr>
+<tr>
+<td>Latest version</td>
+<td>3.0 (implemented Sept 2025+)</td>
+</tr>
+<tr>
+<td>EU compliance</td>
+<td>Mapped to EN 16931 standard</td>
+</tr>
+<tr>
+<td>Spec URL</td>
+<td><code>finanssiala.fi/en/topics/finvoice-standard/</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation notes:</strong>
+- Generate Finvoice 3.0 XML in-house — spec is publicly available
+- Validate against XSD schema before sending to operator
+- Amounts: support 2-5 decimal places
+- Delivery: always via operator (Maventa or Apix) — never direct to bank
+- TEAPPSXML 3.0 is the equivalent operator-to-operator routing format (fully compatible)</p>
+<hr />
+<h3 id="5-peppol-bis-30">5. PEPPOL BIS 3.0</h3>
+<p><strong>Purpose:</strong> EU-wide e-invoicing — required for public sector (B2G) in Finland</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Type</td>
+<td>UBL 2.1 XML format over PEPPOL network</td>
+</tr>
+<tr>
+<td>Access via</td>
+<td>Certified PEPPOL access point (Maventa is access point in Finland)</td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td><code>docs.peppol.eu/poacc/billing/3.0/</code></td>
+</tr>
+<tr>
+<td>Validators</td>
+<td><code>invoice-navigator.eu/validator</code> (free, public)</td>
+</tr>
+<tr>
+<td>Sandbox</td>
+<td>Via Maventa sandbox</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation notes:</strong>
+- Use Maventa as both Finvoice operator AND PEPPOL access point (single integration)
+- Validate UBL 2.1 XML against Schematron rules before sending
+- Growing adoption: mandatory for public sector procurement; B2B use increasing</p>
+<hr />
+<h3 id="6-maventa-primary-e-invoice-operator">6. Maventa (Primary E-invoice Operator)</h3>
+<p><strong>Purpose:</strong> Send/receive Finvoice + PEPPOL invoices; operator network routing</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td>OAuth2 — <code>client_id</code> (Company UUID) + <code>client_secret</code> (API key) + <code>vendor_api_key</code> (partner key)</td>
+</tr>
+<tr>
+<td>Token endpoint</td>
+<td><code>POST /oauth2/token</code></td>
+</tr>
+<tr>
+<td>REST API docs</td>
+<td><code>documentation.maventa.com/rest-api/</code></td>
+</tr>
+<tr>
+<td>Swagger</td>
+<td><code>swagger.maventa.com</code></td>
+</tr>
+<tr>
+<td>Sandbox</td>
+<td>Full sandbox available — requires registration</td>
+</tr>
+<tr>
+<td>Scale</td>
+<td>100,000+ companies in Finland</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key AutoXChange (AX) API operations:</strong>
+- Create company on Maventa network
+- <code>POST</code> send invoice (Finvoice 3.0 / TEAPPSXML / PEPPOL BIS)
+- <code>GET</code> receive invoices from network
+- Register webhooks for delivery status
+- Activate networks (PEPPOL, Scan, bank network)</p>
+<p><strong>Implementation notes:</strong>
+- One Maventa account per tilitoimisto tenant OR white-label partner account (vendor_api_key model)
+- Partner/vendor integration: single API key per software product, sub-accounts per customer
+- Pricing: Netstamps (prepaid credits) or monthly invoice model
+- Webhook registration for invoice delivery status — store in <code>finvoice_lahetykset</code> log table</p>
+<hr />
+<h3 id="7-apix-messaging-secondary-fallback-operator">7. Apix Messaging (Secondary / Fallback Operator)</h3>
+<p><strong>Purpose:</strong> Alternative e-invoice operator; fallback if Maventa unavailable</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td>SHA-256 HMAC digest — <code>TransferID</code> + <code>TransferKey</code></td>
+</tr>
+<tr>
+<td>Method</td>
+<td><code>PUT</code> to submit documents</td>
+</tr>
+<tr>
+<td>Format</td>
+<td>ZIP file containing XML data files + PDF attachments</td>
+</tr>
+<tr>
+<td>API docs</td>
+<td><code>wiki.apix.fi/rest-api-for-external-usage</code></td>
+</tr>
+<tr>
+<td>Pricing</td>
+<td>Transaction-based (Netstamps), no fixed costs</td>
+</tr>
+<tr>
+<td>Sandbox</td>
+<td>Available</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation notes:</strong>
+- Different auth model (SHA-256 digest, not OAuth2) — wrap in dedicated client class
+- Supports automatic format conversion for recipients
+- Plan: Maventa as primary, Apix as fallback / for specific customers</p>
+<hr />
+<h3 id="8-bank-open-banking-apis-psd2">8. Bank Open Banking APIs (PSD2)</h3>
+<p><strong>Purpose:</strong> Account information (tilitapahtumat), payment initiation (PAIN.001 alternative)</p>
+<h4 id="nordea">Nordea</h4>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td>OAuth2 + SCA (Nordea ID app)</td>
+</tr>
+<tr>
+<td>Portal</td>
+<td><code>developer.nordeaopenbanking.com</code></td>
+</tr>
+<tr>
+<td>Sandbox</td>
+<td>Full sandbox, free access</td>
+</tr>
+<tr>
+<td>SDK</td>
+<td>C#, Java, Python samples available</td>
+</tr>
+<tr>
+<td>Scale</td>
+<td>6,500+ sandbox users, 500+ live companies</td>
+</tr>
+</tbody>
+</table>
+<h4 id="op-pankki-largest-in-finland">OP Pankki (largest in Finland)</h4>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td>OAuth2 + SCA</td>
+</tr>
+<tr>
+<td>Portal</td>
+<td><code>op-developer.fi</code></td>
+</tr>
+<tr>
+<td>Sandbox</td>
+<td>Available, open to all developers</td>
+</tr>
+<tr>
+<td>Integrators</td>
+<td>GoCardless, Nordigen, Yapily, Klarna also aggregate OP data</td>
+</tr>
+</tbody>
+</table>
+<h4 id="danske-bank-finland">Danske Bank Finland</h4>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth</td>
+<td>OAuth2 + SCA</td>
+</tr>
+<tr>
+<td>Portal</td>
+<td><code>developers.danskebank.com</code></td>
+</tr>
+<tr>
+<td>Sandbox</td>
+<td><strong>Restricted in Finland</strong> — requires TPP license or Open Banking UK directory membership</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation notes:</strong>
+- Prefer CAMT.053 file import for most customers (simpler, no OAuth2 per-customer SCA)
+- Open Banking API for customers who want real-time bank feed (advanced tier feature)
+- Consider aggregator (Nordigen/GoCardless) to handle multi-bank SCA complexity
+- S-Pankki and Handelsbanken: CAMT.053 file upload only (no public PSD2 API)</p>
+<hr />
+<h3 id="9-sepa-iso-20022-bank-formats">9. SEPA ISO 20022 Bank Formats</h3>
+<p><strong>Purpose:</strong> Payment file (PAIN.001) and bank statement (CAMT.053) processing</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Direction</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pain.001.001.03</code></td>
+<td>Outbound</td>
+<td>Customer credit transfer initiation (salary + invoice payments)</td>
+</tr>
+<tr>
+<td><code>camt.053.001.02</code></td>
+<td>Inbound</td>
+<td>Bank-to-customer account statement</td>
+</tr>
+<tr>
+<td><code>camt.052.001.02</code></td>
+<td>Inbound</td>
+<td>Intraday transaction report (optional, real-time)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation notes:</strong>
+- CAMT.053: primary bank statement format for all Finnish banks
+- MT940: legacy format — still supported by some banks, must handle both
+- PAIN.001: generate per payment batch — group by bank, one file per run
+- Nordea supports both standard and extended camt.053 — handle both variants
+- Validation: validate XML against ISO 20022 schema before sending to bank
+- Finance Finland ISO 20022 Payments Guide 2024 is the implementation reference</p>
+<hr />
+<h3 id="api-summary-table">API Summary Table</h3>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Type</th>
+<th>Auth</th>
+<th>Format</th>
+<th>Sandbox</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Verohallinto Vero API</td>
+<td>Government</td>
+<td>mTLS cert + key</td>
+<td>JSON</td>
+<td>Yes (08-16 only)</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Tulorekisteri</td>
+<td>Government</td>
+<td>X.509 cert (3x)</td>
+<td>XML only</td>
+<td>Yes</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>YTJ / PRH</td>
+<td>Government</td>
+<td>None</td>
+<td>JSON</td>
+<td>Live only (free)</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Finvoice 3.0</td>
+<td>Format spec</td>
+<td>Via operator</td>
+<td>XML</td>
+<td>Via operator</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Maventa AX API</td>
+<td>Operator</td>
+<td>OAuth2</td>
+<td>JSON/XML</td>
+<td>Yes</td>
+<td>P0</td>
+</tr>
+<tr>
+<td>Apix</td>
+<td>Operator</td>
+<td>SHA-256 HMAC</td>
+<td>ZIP+XML</td>
+<td>Yes</td>
+<td>P1 (fallback)</td>
+</tr>
+<tr>
+<td>PEPPOL BIS 3.0</td>
+<td>Format spec</td>
+<td>Via access point</td>
+<td>UBL XML</td>
+<td>Via Maventa</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Nordea PSD2</td>
+<td>Bank</td>
+<td>OAuth2 + SCA</td>
+<td>JSON</td>
+<td>Yes</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>OP Bank PSD2</td>
+<td>Bank</td>
+<td>OAuth2 + SCA</td>
+<td>JSON</td>
+<td>Yes</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Danske Bank PSD2</td>
+<td>Bank</td>
+<td>OAuth2 + SCA</td>
+<td>JSON</td>
+<td>Restricted (FI)</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CAMT.053 / PAIN.001</td>
+<td>Bank format</td>
+<td>Bank file transfer</td>
+<td>XML</td>
+<td>Bank dep.</td>
+<td>P0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>P0</strong> = required for MVP | <strong>P1</strong> = required Phase 3 | <strong>P2</strong> = advanced tier feature</p>
+<hr />
+<h3 id="integration-architecture-pattern">Integration Architecture Pattern</h3>
+<p>All external API clients follow the same structure:</p>
+<pre><code>ExternalAPIClient
+  ├── authenticate()       — cert load / OAuth2 token fetch + refresh
+  ├── submit(payload)      — send with retry (exp. backoff, max 3 attempts)
+  ├── validate(response)   — assert schema compliance
+  └── log(request, response) → external_api_log table
+</code></pre>
+<p>Separate log table per integration: <code>omavero_log</code>, <code>tulorekisteri_log</code>, <code>finvoice_log</code>, <code>bank_log</code>
+All logs: immutable, append-only, retained 10 years (same as kirjanpito aineisto).</p>
+<hr />
+<h2 id="critical-files-to-create-phase-1">Critical Files to Create (Phase 1)</h2>
+<pre><code>backend/
+  app/
+    core/           -- config, database, auth, RLS middleware
+    modules/
+      kirjanpito/   -- tositteet, viennit, tilikartta, tilikausi
+      alv/          -- rate tables, period calc, OmaVero client
+      palkanlaskenta/ -- deduction engine, tulorekisteri client
+      reskontra/    -- AR, AP, reconciliation
+      tilinpaatos/  -- year-end workflow, XBRL
+    tests/
+      unit/
+      integration/
+      security/     -- RLS cross-tenant tests
+
+frontend/
+  apps/
+    tilitoimisto/   -- master view, kirjanpito UI
+    portal/         -- customer web portal
+
+mobile/             -- React Native / Expo (customer portal)
+
+infra/
+  k8s/
+  terraform/
+
+docs/
+  api/              -- OpenAPI 3.1 spec (contract-first)
+</code></pre>
+</div>
+
+</body>
+</html>
