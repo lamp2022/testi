@@ -1,5 +1,5 @@
 const PAGE_SIZE = 100;
-const LANGS = ["en", "sv", "it", "fr", "de"];
+const LANGS = ["en", "fr", "de", "sv", "it"];
 
 let allEntries = [];
 let query = "";
