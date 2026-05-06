@@ -1,12 +1,12 @@
 """
-Build sanakirja/data.json
+Build data.json
 
 Sources:
 - Finnish frequency list: hermitdave/FrequencyWords (GitHub raw)
 - Translations: Apertium bilingual dictionaries (GitHub raw)
   fin-eng, fin-swe, fin-deu, fin-fra, fin-ita
 
-Run: python3 scripts/build_data.py [--limit N]
+Run: python3 scripts/build_data.py [LIMIT]
 Default limit is 1000; use 10000 for larger set.
 """
 
@@ -19,7 +19,7 @@ from pathlib import Path
 LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 1000
 
 CACHE_DIR = Path(__file__).parent / ".cache"
-OUTPUT = Path(__file__).parent.parent / "sanakirja" / "data.json"
+OUTPUT = Path(__file__).parent.parent / "data.json"
 
 FREQ_URL = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2016/fi/fi_50k.txt"
 
@@ -104,11 +104,6 @@ def build():
 
     lang_counts = {lang: sum(1 for e in output if lang in e) for lang in ["en", "sv", "it", "fr", "de"]}
     print("Coverage:", " | ".join(f"{l.upper()}:{n}" for l, n in lang_counts.items()))
-
-    print("\nSample:")
-    for e in output[:8]:
-        parts = [e["fi"]] + [f"{l.upper()}:{e[l]}" for l in ["en", "sv", "it", "fr", "de"] if l in e]
-        print(" | ".join(parts))
 
 
 if __name__ == "__main__":
